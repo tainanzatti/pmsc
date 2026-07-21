@@ -2,10 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 import Sidebar, { type ViewId } from "./components/sidebar";
 import NucleoView from "./components/views/nucleo-view";
 import FlashcardsView from "./components/views/flashcards-view";
+import RedacaoView from "./components/views/redacao-view";
+import PerfilView from "./components/views/perfil-view";
+import PainelView from "./components/views/painel-view";
 import { countDueFlashcards } from "./lib/db";
 
 export default function App() {
-  const [view, setView] = useState<ViewId>("nucleo");
+  const [view, setView] = useState<ViewId>("painel");
   const [flashcardCount, setFlashcardCount] = useState(0);
 
   const refreshCount = useCallback(async () => {
@@ -25,25 +28,19 @@ export default function App() {
 
   const handleNavigate = useCallback((v: ViewId) => {
     setView(v);
-    if (v === "flashcards") {
-      void refreshCount();
-    }
+    if (v === "flashcards") void refreshCount();
   }, [refreshCount]);
 
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>
-      <Sidebar
-        current={view}
-        onNavigate={handleNavigate}
-        flashcardCount={flashcardCount}
-      />
+      <Sidebar current={view} onNavigate={handleNavigate} flashcardCount={flashcardCount} />
       <main style={{ flex: 1, overflowY: "auto" }}>
+        {view === "painel" && <PainelView onNavigate={handleNavigate} />}
         {view === "nucleo" && <NucleoView />}
         {view === "flashcards" && <FlashcardsView onReviewComplete={refreshCount} />}
-        {view === "painel" && <PlaceholderView title="Painel" />}
+        {view === "redacao" && <RedacaoView onMasteryUpdate={refreshCount} />}
         {view === "desempenho" && <PlaceholderView title="Desempenho" />}
-        {view === "redacao" && <PlaceholderView title="Redação" />}
-        {view === "perfil" && <PlaceholderView title="Perfil" />}
+        {view === "perfil" && <PerfilView />}
       </main>
     </div>
   );

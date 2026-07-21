@@ -1,18 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 
-export type ViewId =
-  | "painel"
-  | "nucleo"
-  | "flashcards"
-  | "desempenho"
-  | "redacao"
-  | "perfil";
+export type ViewId = "painel" | "nucleo" | "flashcards" | "desempenho" | "redacao" | "perfil";
 
-interface NavItem {
-  id: ViewId;
-  label: string;
-  icon: string;
-}
+interface NavItem { id: ViewId; label: string; icon: string }
 
 const NAV_ITEMS: NavItem[] = [
   { id: "painel", label: "Painel", icon: "📊" },
@@ -36,9 +26,7 @@ export default function Sidebar({ current, onNavigate, flashcardCount }: Sidebar
 
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored !== null) {
-      setExpanded(stored === "true");
-    }
+    if (stored !== null) setExpanded(stored === "true");
   }, []);
 
   const toggleExpanded = useCallback(() => {
@@ -49,51 +37,31 @@ export default function Sidebar({ current, onNavigate, flashcardCount }: Sidebar
     });
   }, []);
 
-  const sidebarWidth = expanded
-    ? "var(--sidebar-w)"
-    : "var(--sidebar-collapsed-w)";
+  const sidebarWidth = expanded ? "var(--sidebar-w)" : "var(--sidebar-collapsed-w)";
 
   return (
     <aside
       style={{
-        width: sidebarWidth,
-        minWidth: sidebarWidth,
-        background: "var(--surface)",
-        borderRight: "1px solid var(--border)",
-        display: "flex",
-        flexDirection: "column",
-        transition: "width 0.2s ease, min-width 0.2s ease",
-        height: "100vh",
-        position: "sticky",
-        top: 0,
+        width: sidebarWidth, minWidth: sidebarWidth, background: "var(--surface)",
+        borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column",
+        transition: "width 0.2s ease, min-width 0.2s ease", height: "100vh", position: "sticky", top: 0,
       }}
     >
-      {/* Collapse/expand toggle */}
       <button
         onClick={toggleExpanded}
         style={{
-          background: "transparent",
-          color: "var(--text-muted)",
-          padding: expanded ? "16px 20px" : "16px 0",
-          textAlign: expanded ? "left" : "center",
-          fontSize: "18px",
-          borderBottom: "1px solid var(--border)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: expanded ? "space-between" : "center",
-          gap: "12px",
+          background: "transparent", color: "var(--text-muted)",
+          padding: expanded ? "16px 20px" : "16px 0", textAlign: expanded ? "left" : "center",
+          fontSize: "18px", borderBottom: "1px solid var(--border)", display: "flex",
+          alignItems: "center", justifyContent: expanded ? "space-between" : "center", gap: "12px",
         }}
         title={expanded ? "Recolher" : "Expandir"}
       >
         <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--text)" }}>
           {expanded ? "Operação PMSC" : "PMSC"}
         </span>
-        <span style={{ fontSize: "16px" }}>
-          {expanded ? "◀" : "▶"}
-        </span>
+        <span style={{ fontSize: "16px" }}>{expanded ? "◀" : "▶"}</span>
       </button>
-
-      {/* Nav items */}
       <nav style={{ flex: 1, padding: "12px 8px", display: "flex", flexDirection: "column", gap: "4px" }}>
         {NAV_ITEMS.map((item) => {
           const isActive = current === item.id;
@@ -106,38 +74,22 @@ export default function Sidebar({ current, onNavigate, flashcardCount }: Sidebar
               style={{
                 background: isActive ? "var(--surface-hover)" : "transparent",
                 color: isActive ? "var(--primary)" : "var(--text-muted)",
-                padding: expanded ? "12px 16px" : "12px 0",
-                textAlign: "left",
-                display: "flex",
-                alignItems: "center",
-                gap: "12px",
+                padding: expanded ? "12px 16px" : "12px 0", textAlign: "left",
+                display: "flex", alignItems: "center", gap: "12px",
                 justifyContent: expanded ? "flex-start" : "center",
-                borderRadius: "var(--radius-sm)",
-                border: "none",
-                fontSize: "14px",
-                fontWeight: isActive ? 600 : 500,
-                position: "relative",
+                borderRadius: "var(--radius-sm)", border: "none", fontSize: "14px",
+                fontWeight: isActive ? 600 : 500, position: "relative",
               }}
             >
               <span style={{ fontSize: "18px", flexShrink: 0 }}>{item.icon}</span>
               {expanded && <span>{item.label}</span>}
               {showBadge && (
-                <span
-                  style={{
-                    background: "var(--error)",
-                    color: "white",
-                    fontSize: "11px",
-                    fontWeight: 700,
-                    borderRadius: "10px",
-                    padding: "2px 7px",
-                    minWidth: "20px",
-                    textAlign: "center",
-                    marginLeft: expanded ? "auto" : "0",
-                    position: expanded ? "static" : "absolute",
-                    top: expanded ? "auto" : "4px",
-                    right: expanded ? "auto" : "4px",
-                  }}
-                >
+                <span style={{
+                  background: "var(--error)", color: "white", fontSize: "11px", fontWeight: 700,
+                  borderRadius: "10px", padding: "2px 7px", minWidth: "20px", textAlign: "center",
+                  marginLeft: expanded ? "auto" : "0", position: expanded ? "static" : "absolute",
+                  top: expanded ? "auto" : "4px", right: expanded ? "auto" : "4px",
+                }}>
                   {flashcardCount > 99 ? "99+" : flashcardCount}
                 </span>
               )}
@@ -145,17 +97,7 @@ export default function Sidebar({ current, onNavigate, flashcardCount }: Sidebar
           );
         })}
       </nav>
-
-      {/* Footer */}
-      <div
-        style={{
-          padding: expanded ? "12px 20px" : "12px 0",
-          textAlign: "center",
-          borderTop: "1px solid var(--border)",
-          fontSize: "11px",
-          color: "var(--text-muted)",
-        }}
-      >
+      <div style={{ padding: expanded ? "12px 20px" : "12px 0", textAlign: "center", borderTop: "1px solid var(--border)", fontSize: "11px", color: "var(--text-muted)" }}>
         {expanded ? "Soldado PMSC 2026" : "2026"}
       </div>
     </aside>

@@ -1,55 +1,31 @@
 // src/lib/curriculum.ts
-// Núcleo do motor de estudos da Operação PMSC (Soldado PMSC 2026 - banca Instituto AOCP).
-// Bloco 1: fila de prioridade ponderada + teto de tópicos por desempenho real.
-// Bloco 2: multiplicador de urgência por disciplina pulada.
-
 export type DisciplineId =
-  | "portugues"
-  | "matematica"
-  | "historia-sc"
-  | "geografia-sc"
-  | "atualidades"
-  | "legislacao"
-  | "raciocinio-logico"
-  | "informatica"
-  | "redacao";
+  | "portugues" | "matematica" | "historia-sc" | "geografia-sc"
+  | "atualidades" | "legislacao" | "raciocinio-logico" | "informatica" | "redacao";
 
 export type MasteryTier = "ruim" | "medio" | "bom" | "otimo";
 
 export interface Lancamento {
-  id: string;
-  topic_id: string;
-  discipline_id: DisciplineId;
-  mastered: number;
-  created_at: string;
-  cycle_number?: number | null;
+  id: string; topic_id: string; discipline_id: DisciplineId;
+  mastered: number; created_at: string; cycle_number?: number | null;
 }
 
 export interface TopicWithMastery {
-  id: string;
-  discipline_id: DisciplineId;
-  title: string;
-  mastery: number;
-  last_reviewed_at: string | null;
+  id: string; discipline_id: DisciplineId; title: string;
+  mastery: number; last_reviewed_at: string | null;
 }
 
 export interface AllocatedTopic {
-  topic: TopicWithMastery;
-  reason: "abaixo-do-teto" | "reforco" | "primeiro-ciclo";
+  topic: TopicWithMastery; reason: "abaixo-do-teto" | "reforco" | "primeiro-ciclo";
 }
 
 export interface DisciplineSkipState {
-  discipline_id: DisciplineId;
-  skip_count: number;
-  urgency_multiplier: number;
-  updated_at: string;
+  discipline_id: DisciplineId; skip_count: number;
+  urgency_multiplier: number; updated_at: string;
 }
 
 export interface DisciplineConfig {
-  id: DisciplineId;
-  label: string;
-  weight: number;
-  rotationOrder: number;
+  id: DisciplineId; label: string; weight: number; rotationOrder: number;
 }
 
 export const DISCIPLINES: Record<DisciplineId, DisciplineConfig> = {
@@ -78,10 +54,7 @@ export function isBelowGood(mastery: number): boolean {
   return tier !== "bom" && tier !== "otimo";
 }
 
-export function averageMasteryForDiscipline(
-  topics: TopicWithMastery[],
-  discipline: DisciplineId,
-): number {
+export function averageMasteryForDiscipline(topics: TopicWithMastery[], discipline: DisciplineId): number {
   const filtered = topics.filter((t) => t.discipline_id === discipline);
   if (filtered.length === 0) return 0;
   return filtered.reduce((sum, t) => sum + t.mastery, 0) / filtered.length;
@@ -93,38 +66,23 @@ export function forgettingFactor(daysSinceLastReview: number): number {
   return Math.min(2.5, 1 + daysSinceLastReview / 5);
 }
 
-export function daysSinceLastDisciplineReview(
-  topics: TopicWithMastery[],
-  discipline: DisciplineId,
-  now: Date = new Date(),
-): number {
-  const filtered = topics.filter(
-    (t) => t.discipline_id === discipline && t.last_reviewed_at,
-  );
+export function daysSinceLastDisciplineReview(topics: TopicWithMastery[], discipline: DisciplineId, now: Date = new Date()): number {
+  const filtered = topics.filter((t) => t.discipline_id === discipline && t.last_reviewed_at);
   if (filtered.length === 0) return Infinity;
   const latest = filtered.reduce((max, t) => {
     const ts = new Date(t.last_reviewed_at as string).getTime();
     return ts > max ? ts : max;
   }, 0);
-  const diffMs = now.getTime() - latest;
-  return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+  return Math.max(0, Math.floor((now.getTime() - latest) / (1000 * 60 * 60 * 24)));
 }
 
 export interface DisciplineScore {
-  discipline: DisciplineId;
-  score: number;
-  weight: number;
-  averageMastery: number;
-  daysSinceReview: number;
-  forgetting: number;
-  urgencyMultiplier: number;
+  discipline: DisciplineId; score: number; weight: number;
+  averageMastery: number; daysSinceReview: number;
+  forgetting: number; urgencyMultiplier: number;
 }
 
-export function scoreDisciplines(
-  topics: TopicWithMastery[],
-  skipStates: Record<string, DisciplineSkipState>,
-  now: Date = new Date(),
-): DisciplineScore[] {
+export function scoreDisciplines(topics: TopicWithMastery[], skipStates: Record<string, DisciplineSkipState>, now: Date = new Date()): DisciplineScore[] {
   const scores: DisciplineScore[] = ALL_DISCIPLINE_IDS.map((id) => {
     const cfg = DISCIPLINES[id];
     const avg = averageMasteryForDiscipline(topics, id);
@@ -132,15 +90,7 @@ export function scoreDisciplines(
     const forgetting = forgettingFactor(days);
     const urgency = skipStates[id]?.urgency_multiplier ?? 1.0;
     const score = cfg.weight * (1 - avg / 100) * forgetting * urgency;
-    return {
-      discipline: id,
-      score,
-      weight: cfg.weight,
-      averageMastery: avg,
-      daysSinceReview: days,
-      forgetting,
-      urgencyMultiplier: urgency,
-    };
+    return { discipline: id, score, weight: cfg.weight, averageMastery: avg, daysSinceReview: days, forgetting, urgencyMultiplier: urgency };
   });
   scores.sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;
@@ -149,47 +99,27 @@ export function scoreDisciplines(
   return scores;
 }
 
-export function nextHeroDiscipline(
-  topics: TopicWithMastery[],
-  skipStates: Record<string, DisciplineSkipState>,
-  options: { now?: Date; cycleLength?: number } = {},
-): DisciplineId {
+export function nextHeroDiscipline(topics: TopicWithMastery[], skipStates: Record<string, DisciplineSkipState>, options: { now?: Date; cycleLength?: number } = {}): DisciplineId {
   const now = options.now ?? new Date();
   const cycleLength = options.cycleLength ?? 1;
   const scores = scoreDisciplines(topics, skipStates, now);
   const top = scores.slice(0, cycleLength).map((s) => s.discipline);
-  const mostNeglected = [...scores].sort(
-    (a, b) => b.daysSinceReview - a.daysSinceReview,
-  )[0];
-  if (mostNeglected && !top.includes(mostNeglected.discipline)) {
-    if (mostNeglected.daysSinceReview > ALL_DISCIPLINE_IDS.length) {
-      top[top.length - 1] = mostNeglected.discipline;
-    }
+  const mostNeglected = [...scores].sort((a, b) => b.daysSinceReview - a.daysSinceReview)[0];
+  if (mostNeglected && !top.includes(mostNeglected.discipline) && mostNeglected.daysSinceReview > ALL_DISCIPLINE_IDS.length) {
+    top[top.length - 1] = mostNeglected.discipline;
   }
   return top[0];
 }
 
-export function countTopicsBelowGood(
-  topics: TopicWithMastery[],
-  discipline: DisciplineId,
-): number {
-  return topics.filter(
-    (t) => t.discipline_id === discipline && isBelowGood(t.mastery),
-  ).length;
+export function countTopicsBelowGood(topics: TopicWithMastery[], discipline: DisciplineId): number {
+  return topics.filter((t) => t.discipline_id === discipline && isBelowGood(t.mastery)).length;
 }
 
-export function maxTopicsForDiscipline(
-  topics: TopicWithMastery[],
-  discipline: DisciplineId,
-): number {
-  const belowGood = countTopicsBelowGood(topics, discipline);
-  return Math.min(3, belowGood);
+export function maxTopicsForDiscipline(topics: TopicWithMastery[], discipline: DisciplineId): number {
+  return Math.min(3, countTopicsBelowGood(topics, discipline));
 }
 
-export function allocateTopicsForDiscipline(
-  topics: TopicWithMastery[],
-  discipline: DisciplineId,
-): AllocatedTopic[] {
+export function allocateTopicsForDiscipline(topics: TopicWithMastery[], discipline: DisciplineId): AllocatedTopic[] {
   const cap = maxTopicsForDiscipline(topics, discipline);
   if (cap === 0) return [];
   const candidates = topics
@@ -210,11 +140,7 @@ export function nextSkipMultiplier(current: number): number {
   return Math.min(3.0, current + 0.5);
 }
 
-export function priorityReason(
-  discipline: DisciplineId,
-  topics: TopicWithMastery[],
-  skipStates: Record<string, DisciplineSkipState>,
-): string {
+export function priorityReason(discipline: DisciplineId, topics: TopicWithMastery[], skipStates: Record<string, DisciplineSkipState>): string {
   const cfg = DISCIPLINES[discipline];
   const avg = averageMasteryForDiscipline(topics, discipline);
   const days = daysSinceLastDisciplineReview(topics, discipline);
@@ -236,17 +162,11 @@ export function consolidateTopics(lancamentos: Lancamento[]): TopicWithMastery[]
   const topics: TopicWithMastery[] = [];
   for (const [topicId, entries] of byTopic) {
     const mastery = entries.reduce((sum, e) => sum + e.mastered, 0) / entries.length;
-    const latest = entries.reduce((max, e) => {
-      const ts = new Date(e.created_at).getTime();
-      return ts > max ? ts : max;
-    }, 0);
+    const latest = entries.reduce((max, e) => Math.max(max, new Date(e.created_at).getTime()), 0);
     const first = entries[0];
     topics.push({
-      id: topicId,
-      discipline_id: first.discipline_id,
-      title: topicId,
-      mastery,
-      last_reviewed_at: latest > 0 ? new Date(latest).toISOString() : null,
+      id: topicId, discipline_id: first.discipline_id, title: topicId,
+      mastery, last_reviewed_at: latest > 0 ? new Date(latest).toISOString() : null,
     });
   }
   return topics;
