@@ -3,10 +3,6 @@
 // Bloco 1: fila de prioridade ponderada + teto de tópicos por desempenho real.
 // Bloco 2: multiplicador de urgência por disciplina pulada.
 
-// ---------------------------------------------------------------------------
-// Tipos públicos (compatíveis com o que já é persistido no Supabase)
-// ---------------------------------------------------------------------------
-
 export type DisciplineId =
   | "portugues"
   | "matematica"
@@ -49,10 +45,6 @@ export interface DisciplineSkipState {
   updated_at: string;
 }
 
-// ---------------------------------------------------------------------------
-// Configuração do edital
-// ---------------------------------------------------------------------------
-
 export interface DisciplineConfig {
   id: DisciplineId;
   label: string;
@@ -74,12 +66,6 @@ export const DISCIPLINES: Record<DisciplineId, DisciplineConfig> = {
 
 export const ALL_DISCIPLINE_IDS = Object.keys(DISCIPLINES) as DisciplineId[];
 
-export const GOOD_TIER: MasteryTier = "bom";
-
-// ---------------------------------------------------------------------------
-// Helpers de tier e domínio médio
-// ---------------------------------------------------------------------------
-
 export function masteryToTier(mastery: number): MasteryTier {
   if (mastery < 40) return "ruim";
   if (mastery < 65) return "medio";
@@ -100,10 +86,6 @@ export function averageMasteryForDiscipline(
   if (filtered.length === 0) return 0;
   return filtered.reduce((sum, t) => sum + t.mastery, 0) / filtered.length;
 }
-
-// ---------------------------------------------------------------------------
-// 1) FILA DE PRIORIDADE PONDERADA
-// ---------------------------------------------------------------------------
 
 export function forgettingFactor(daysSinceLastReview: number): number {
   if (daysSinceLastReview <= 0) return 1;
@@ -138,9 +120,6 @@ export interface DisciplineScore {
   urgencyMultiplier: number;
 }
 
-/**
- * score = pesoEdital × (1 − dominioMedio/100) × fatorEsquecimento × multiplicadorUrgencia
- */
 export function scoreDisciplines(
   topics: TopicWithMastery[],
   skipStates: Record<string, DisciplineSkipState>,
@@ -178,9 +157,7 @@ export function nextHeroDiscipline(
   const now = options.now ?? new Date();
   const cycleLength = options.cycleLength ?? 1;
   const scores = scoreDisciplines(topics, skipStates, now);
-
   const top = scores.slice(0, cycleLength).map((s) => s.discipline);
-
   const mostNeglected = [...scores].sort(
     (a, b) => b.daysSinceReview - a.daysSinceReview,
   )[0];
@@ -189,13 +166,8 @@ export function nextHeroDiscipline(
       top[top.length - 1] = mostNeglected.discipline;
     }
   }
-
   return top[0];
 }
-
-// ---------------------------------------------------------------------------
-// 2) TETO DE TÓPICOS POR DESEMPENHO REAL
-// ---------------------------------------------------------------------------
 
 export function countTopicsBelowGood(
   topics: TopicWithMastery[],
@@ -220,7 +192,6 @@ export function allocateTopicsForDiscipline(
 ): AllocatedTopic[] {
   const cap = maxTopicsForDiscipline(topics, discipline);
   if (cap === 0) return [];
-
   const candidates = topics
     .filter((t) => t.discipline_id === discipline && isBelowGood(t.mastery))
     .sort((a, b) => {
@@ -229,28 +200,16 @@ export function allocateTopicsForDiscipline(
       const bTs = b.last_reviewed_at ? new Date(b.last_reviewed_at).getTime() : 0;
       return aTs - bTs;
     });
-
   return candidates.slice(0, cap).map((topic) => ({
     topic,
     reason: topic.last_reviewed_at ? ("abaixo-do-teto" as const) : ("primeiro-ciclo" as const),
   }));
 }
 
-// ---------------------------------------------------------------------------
-// 4) TRAVA DA DISCIPLINA ATIVA — multiplicador de urgência por skip
-// ---------------------------------------------------------------------------
-
-/**
- * Calcula o próximo multiplicador de urgência ao pular uma disciplina.
- * Empilha: 1.0 → 1.5 → 2.0 → 2.5 → 3.0 (teto de 3.0).
- */
 export function nextSkipMultiplier(current: number): number {
   return Math.min(3.0, current + 0.5);
 }
 
-/**
- * Texto explicativo do motivo da prioridade de uma disciplina.
- */
 export function priorityReason(
   discipline: DisciplineId,
   topics: TopicWithMastery[],
@@ -267,10 +226,6 @@ export function priorityReason(
   return `peso ${weightPct}% no edital, domínio médio ${masteryPct}%, ${daysText}${skipText}`;
 }
 
-// ---------------------------------------------------------------------------
-// Utilitário: consolidar lançamentos em TopicWithMastery
-// ---------------------------------------------------------------------------
-
 export function consolidateTopics(lancamentos: Lancamento[]): TopicWithMastery[] {
   const byTopic = new Map<string, Lancamento[]>();
   for (const l of lancamentos) {
@@ -278,7 +233,6 @@ export function consolidateTopics(lancamentos: Lancamento[]): TopicWithMastery[]
     arr.push(l);
     byTopic.set(l.topic_id, arr);
   }
-
   const topics: TopicWithMastery[] = [];
   for (const [topicId, entries] of byTopic) {
     const mastery = entries.reduce((sum, e) => sum + e.mastered, 0) / entries.length;

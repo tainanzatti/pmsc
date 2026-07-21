@@ -75,7 +75,6 @@ export default function NucleoView() {
         })),
       );
 
-      // Merge: topics without any lancamentos still appear with mastery 0
       const topicMap = new Map<string, TopicWithMastery>();
       for (const t of consolidated) topicMap.set(t.id, t);
       for (const t of topicRows) {
@@ -88,7 +87,6 @@ export default function NucleoView() {
             last_reviewed_at: null,
           });
         } else {
-          // Update title from topics table
           const existing = topicMap.get(t.id)!;
           topicMap.set(t.id, { ...existing, title: t.title });
         }
@@ -239,10 +237,6 @@ export default function NucleoView() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// DisciplineCard
-// ---------------------------------------------------------------------------
-
 interface DisciplineCardProps {
   disciplineId: DisciplineId;
   isActive: boolean;
@@ -308,7 +302,6 @@ function DisciplineCard({
       }}
       onClick={onToggle}
     >
-      {/* Header */}
       <div
         style={{
           display: "flex",
@@ -345,7 +338,6 @@ function DisciplineCard({
         )}
       </div>
 
-      {/* Mastery bar */}
       <div style={{ marginBottom: "12px" }}>
         <div
           style={{
@@ -354,9 +346,7 @@ function DisciplineCard({
             marginBottom: "6px",
           }}
         >
-          <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
-            Domínio
-          </span>
+          <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>Domínio</span>
           <span style={{ fontSize: "12px", fontWeight: 600, color: tierColor }}>
             {Math.round(avgMastery)}%
           </span>
@@ -381,7 +371,6 @@ function DisciplineCard({
         </div>
       </div>
 
-      {/* Days since review */}
       <div
         style={{
           display: "flex",
@@ -399,7 +388,6 @@ function DisciplineCard({
         )}
       </div>
 
-      {/* Expanded content */}
       {isExpanded && isActive && (
         <ExpandedDiscipline
           disciplineId={disciplineId}
@@ -425,10 +413,6 @@ function DisciplineCard({
     </div>
   );
 }
-
-// ---------------------------------------------------------------------------
-// ExpandedDiscipline
-// ---------------------------------------------------------------------------
 
 interface ExpandedDisciplineProps {
   disciplineId: DisciplineId;
@@ -459,7 +443,6 @@ function ExpandedDiscipline({
       }}
       onClick={(e) => e.stopPropagation()}
     >
-      {/* Priority reason */}
       <div
         style={{
           background: "var(--primary-dim)",
@@ -473,24 +456,16 @@ function ExpandedDiscipline({
           <br />
           {reason}
         </p>
-        <p
-          style={{
-            fontSize: "11px",
-            color: "var(--text-muted)",
-            marginTop: "4px",
-          }}
-        >
+        <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>
           Score de prioridade: {score.toFixed(4)}
         </p>
       </div>
 
-      {/* Topic cap info */}
       <p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "12px" }}>
         Teto de tópicos: {cap} {cap === 1 ? "tópico" : "tópicos"} (baseado em{" "}
         {disciplineTopics.filter((t) => t.mastery < 85).length} abaixo de "bom")
       </p>
 
-      {/* Topic list */}
       {allocated.length === 0 ? (
         <p style={{ fontSize: "14px", color: "var(--success)", marginBottom: "16px" }}>
           Todos os tópicos desta disciplina estão em nível "bom" ou superior.
@@ -551,14 +526,8 @@ function ExpandedDiscipline({
         </div>
       )}
 
-      {/* Actions */}
       <div style={{ display: "flex", gap: "12px", marginTop: "16px" }}>
-        <button
-          style={{
-            background: "var(--primary)",
-            color: "white",
-          }}
-        >
+        <button style={{ background: "var(--primary)", color: "white" }}>
           Estudar agora
         </button>
         <button
@@ -575,10 +544,6 @@ function ExpandedDiscipline({
     </div>
   );
 }
-
-// ---------------------------------------------------------------------------
-// SkipConfirmModal
-// ---------------------------------------------------------------------------
 
 interface SkipConfirmModalProps {
   discipline: DisciplineId;
@@ -640,10 +605,7 @@ function SkipConfirmModal({
             Cancelar
           </button>
           <button
-            style={{
-              background: "var(--error)",
-              color: "white",
-            }}
+            style={{ background: "var(--error)", color: "white" }}
             onClick={onConfirm}
             disabled={skipping}
           >

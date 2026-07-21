@@ -12,6 +12,8 @@
   --error: #ef4444;
   --radius: 12px;
   --radius-sm: 8px;
+  --sidebar-w: 240px;
+  --sidebar-collapsed-w: 64px;
 }
 
 * {
