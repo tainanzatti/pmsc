@@ -82,7 +82,4 @@ textarea {
   width: 100%;
 }
 
-textarea:focus {
-  outline: none;
-  border-color: var(--primary);
-}
+textarea:focus { outline: none; border-color: var(--primary); }

@@ -1,4 +1,9 @@
 // src/lib/curriculum.ts
+// Núcleo do motor de estudos da Operação PMSC (Soldado PMSC 2026 - banca Instituto AOCP).
+// Bloco 1: fila de prioridade ponderada + teto de tópicos por desempenho real.
+// Bloco 2: multiplicador de urgência por disciplina pulada.
+// Bloco 5: ressurgimento espaçado de tópicos dominados.
+
 export type DisciplineId =
   | "portugues" | "matematica" | "historia-sc" | "geografia-sc"
   | "atualidades" | "legislacao" | "raciocinio-logico" | "informatica" | "redacao";
@@ -16,7 +21,9 @@ export interface TopicWithMastery {
 }
 
 export interface AllocatedTopic {
-  topic: TopicWithMastery; reason: "abaixo-do-teto" | "reforco" | "primeiro-ciclo";
+  topic: TopicWithMastery;
+  reason: "abaixo-do-teto" | "reforco" | "primeiro-ciclo" | "manutencao";
+  minutes?: number;
 }
 
 export interface DisciplineSkipState {
@@ -42,6 +49,16 @@ export const DISCIPLINES: Record<DisciplineId, DisciplineConfig> = {
 
 export const ALL_DISCIPLINE_IDS = Object.keys(DISCIPLINES) as DisciplineId[];
 
+// ---------------------------------------------------------------------------
+// Bloco 5: constantes do ressurgimento espaçado
+// ---------------------------------------------------------------------------
+
+/** Dias sem revisão para um tópico dominado voltar como teste de manutenção. */
+export const RESURFACE_THRESHOLD_DAYS = 21;
+
+/** Fatia pequena de tempo (minutos) para teste de manutenção. */
+export const MAINTENANCE_MINUTES = 7;
+
 export function masteryToTier(mastery: number): MasteryTier {
   if (mastery < 40) return "ruim";
   if (mastery < 65) return "medio";
@@ -52,6 +69,10 @@ export function masteryToTier(mastery: number): MasteryTier {
 export function isBelowGood(mastery: number): boolean {
   const tier = masteryToTier(mastery);
   return tier !== "bom" && tier !== "otimo";
+}
+
+export function isDominated(mastery: number): boolean {
+  return masteryToTier(mastery) === "otimo";
 }
 
 export function averageMasteryForDiscipline(topics: TopicWithMastery[], discipline: DisciplineId): number {
@@ -74,6 +95,35 @@ export function daysSinceLastDisciplineReview(topics: TopicWithMastery[], discip
     return ts > max ? ts : max;
   }, 0);
   return Math.max(0, Math.floor((now.getTime() - latest) / (1000 * 60 * 60 * 24)));
+}
+
+export function daysSinceTopicReview(topic: TopicWithMastery, now: Date = new Date()): number {
+  if (!topic.last_reviewed_at) return Infinity;
+  return Math.max(0, Math.floor((now.getTime() - new Date(topic.last_reviewed_at).getTime()) / (1000 * 60 * 60 * 24)));
+}
+
+// ---------------------------------------------------------------------------
+// Bloco 5: ressurgimento espaçado — tópicos dominados que precisam de manutenção
+// ---------------------------------------------------------------------------
+
+/**
+ * Retorna tópicos dominados (tier "otimo") que não foram revisados há mais de
+ * RESURFACE_THRESHOLD_DAYS dias. Esses tópicos voltam a disputar a hora da
+ * disciplina com uma fatia pequena de tempo (MAINTENANCE_MINUTES) como teste
+ * de manutenção.
+ */
+export function getResurfaceTopics(
+  topics: TopicWithMastery[],
+  discipline: DisciplineId,
+  now: Date = new Date(),
+): TopicWithMastery[] {
+  return topics
+    .filter((t) =>
+      t.discipline_id === discipline &&
+      isDominated(t.mastery) &&
+      daysSinceTopicReview(t, now) >= RESURFACE_THRESHOLD_DAYS,
+    )
+    .sort((a, b) => daysSinceTopicReview(b, now) - daysSinceTopicReview(a, now));
 }
 
 export interface DisciplineScore {
@@ -119,21 +169,41 @@ export function maxTopicsForDiscipline(topics: TopicWithMastery[], discipline: D
   return Math.min(3, countTopicsBelowGood(topics, discipline));
 }
 
-export function allocateTopicsForDiscipline(topics: TopicWithMastery[], discipline: DisciplineId): AllocatedTopic[] {
+// ---------------------------------------------------------------------------
+// Bloco 5: allocateTopicsForDiscipline agora inclui tópicos de manutenção
+// ---------------------------------------------------------------------------
+
+export function allocateTopicsForDiscipline(
+  topics: TopicWithMastery[],
+  discipline: DisciplineId,
+  now: Date = new Date(),
+): AllocatedTopic[] {
   const cap = maxTopicsForDiscipline(topics, discipline);
-  if (cap === 0) return [];
-  const candidates = topics
+
+  // Tópicos abaixo do teto (prioridade principal)
+  const belowGood: AllocatedTopic[] = cap === 0 ? [] : topics
     .filter((t) => t.discipline_id === discipline && isBelowGood(t.mastery))
     .sort((a, b) => {
       if (a.mastery !== b.mastery) return a.mastery - b.mastery;
       const aTs = a.last_reviewed_at ? new Date(a.last_reviewed_at).getTime() : 0;
       const bTs = b.last_reviewed_at ? new Date(b.last_reviewed_at).getTime() : 0;
       return aTs - bTs;
-    });
-  return candidates.slice(0, cap).map((topic) => ({
+    })
+    .slice(0, cap)
+    .map((topic) => ({
+      topic,
+      reason: topic.last_reviewed_at ? ("abaixo-do-teto" as const) : ("primeiro-ciclo" as const),
+    }));
+
+  // Bloco 5: tópicos dominados que ressurgem para manutenção
+  const resurface = getResurfaceTopics(topics, discipline, now);
+  const maintenanceTopics: AllocatedTopic[] = resurface.map((topic) => ({
     topic,
-    reason: topic.last_reviewed_at ? ("abaixo-do-teto" as const) : ("primeiro-ciclo" as const),
+    reason: "manutencao" as const,
+    minutes: MAINTENANCE_MINUTES,
   }));
+
+  return [...belowGood, ...maintenanceTopics];
 }
 
 export function nextSkipMultiplier(current: number): number {
@@ -149,7 +219,14 @@ export function priorityReason(discipline: DisciplineId, topics: TopicWithMaster
   const masteryPct = Math.round(avg);
   const daysText = !isFinite(days) ? "sem revisão registrada" : `sem revisão há ${days} ${days === 1 ? "dia" : "dias"}`;
   const skipText = skip && skip.skip_count > 0 ? `, pulada ${skip.skip_count}x` : "";
-  return `peso ${weightPct}% no edital, domínio médio ${masteryPct}%, ${daysText}${skipText}`;
+
+  // Bloco 5: mention maintenance topics if any
+  const resurface = getResurfaceTopics(topics, discipline);
+  const maintenanceText = resurface.length > 0
+    ? `, ${resurface.length} ${resurface.length === 1 ? "tópico dominado precisa de manutenção" : "tópicos dominados precisam de manutenção"}`
+    : "";
+
+  return `peso ${weightPct}% no edital, domínio médio ${masteryPct}%, ${daysText}${skipText}${maintenanceText}`;
 }
 
 export function consolidateTopics(lancamentos: Lancamento[]): TopicWithMastery[] {

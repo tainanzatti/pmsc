@@ -5,6 +5,7 @@ import {
   type TopicWithMastery, allocateTopicsForDiscipline, averageMasteryForDiscipline,
   consolidateTopics, daysSinceLastDisciplineReview, masteryToTier,
   maxTopicsForDiscipline, nextHeroDiscipline, nextSkipMultiplier, priorityReason, scoreDisciplines,
+  getResurfaceTopics, MAINTENANCE_MINUTES,
 } from "../../lib/curriculum";
 
 interface TopicRow { id: string; discipline_id: string; title: string; created_at: string }
@@ -24,9 +25,7 @@ export default function NucleoView() {
     setLoading(true); setError(null);
     try {
       const [topicsRes, lancamentosRes, skipRes] = await Promise.all([
-        supabase.from("topics").select("*"),
-        supabase.from("lancamentos").select("*"),
-        supabase.from("discipline_skip_state").select("*"),
+        supabase.from("topics").select("*"), supabase.from("lancamentos").select("*"), supabase.from("discipline_skip_state").select("*"),
       ]);
       if (topicsRes.error) throw topicsRes.error;
       if (lancamentosRes.error) throw lancamentosRes.error;
@@ -100,16 +99,12 @@ function DisciplineCard({ disciplineId, isActive, isExpanded, isRedacao, topics,
   const tier = masteryToTier(avgMastery);
   const skipCount = skipStates[disciplineId]?.skip_count ?? 0;
   const urgency = skipStates[disciplineId]?.urgency_multiplier ?? 1.0;
+  const resurfaceCount = getResurfaceTopics(topics, disciplineId).length;
   const tierColor = tier === "otimo" ? "var(--success)" : tier === "bom" ? "#22c55e" : tier === "medio" ? "var(--warning)" : "var(--error)";
   const daysText = !isFinite(days) ? "sem revisão" : days === 0 ? "revisado hoje" : days === 1 ? "há 1 dia" : `há ${days} dias`;
 
   return (
-    <div style={{
-      background: isActive ? "var(--surface-hover)" : "var(--surface)",
-      border: isActive ? "2px solid var(--primary)" : isRedacao ? "2px dashed var(--text-muted)" : "1px solid var(--border)",
-      borderRadius: "var(--radius)", padding: "20px", cursor: isActive ? "pointer" : "default",
-      transition: "all 0.2s ease", opacity: isActive ? 1 : 0.55, gridColumn: isExpanded ? "1 / -1" : undefined,
-    }} onClick={onToggle}>
+    <div style={{ background: isActive ? "var(--surface-hover)" : "var(--surface)", border: isActive ? "2px solid var(--primary)" : isRedacao ? "2px dashed var(--text-muted)" : "1px solid var(--border)", borderRadius: "var(--radius)", padding: "20px", cursor: isActive ? "pointer" : "default", transition: "all 0.2s ease", opacity: isActive ? 1 : 0.55, gridColumn: isExpanded ? "1 / -1" : undefined }} onClick={onToggle}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
         <div>
           <h3 style={{ fontSize: "16px", fontWeight: 600, marginBottom: "4px" }}>{cfg.label}</h3>
@@ -131,6 +126,11 @@ function DisciplineCard({ disciplineId, isActive, isExpanded, isRedacao, topics,
         <span>{daysText}</span>
         {skipCount > 0 && <span style={{ color: "var(--warning)" }}>pulada {skipCount}x (urgência ×{urgency.toFixed(1)})</span>}
       </div>
+      {resurfaceCount > 0 && (
+        <div style={{ fontSize: "11px", color: "var(--primary)", marginBottom: "4px" }}>
+          {resurfaceCount} {resurfaceCount === 1 ? "tópico dominado" : "tópicos dominados"} precisam de manutenção ({MAINTENANCE_MINUTES} min)
+        </div>
+      )}
       {isExpanded && isActive && <ExpandedDiscipline disciplineId={disciplineId} topics={topics} skipStates={skipStates} score={score} onSkip={onSkip} />}
       {isRedacao && !isExpanded && <p style={{ fontSize: "12px", color: "var(--text-muted)", fontStyle: "italic", marginTop: "8px" }}>Tratamento especial — detalhes em breve.</p>}
     </div>
@@ -156,9 +156,14 @@ function ExpandedDiscipline({ disciplineId, topics, skipStates, score, onSkip }:
       ) : (
         <div style={{ marginBottom: "16px" }}>
           <h4 style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-muted)", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Tópicos para estudar</h4>
-          {allocated.map(({ topic, reason: allocReason }) => (
+          {allocated.map(({ topic, reason: allocReason, minutes }) => (
             <div key={topic.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
-              <div><span style={{ fontSize: "14px" }}>{topic.title}</span><span style={{ fontSize: "11px", color: "var(--text-muted)", marginLeft: "8px" }}>{allocReason === "primeiro-ciclo" ? "novo" : "reforço"}</span></div>
+              <div>
+                <span style={{ fontSize: "14px" }}>{topic.title}</span>
+                <span style={{ fontSize: "11px", color: allocReason === "manutencao" ? "var(--primary)" : "var(--text-muted)", marginLeft: "8px" }}>
+                  {allocReason === "primeiro-ciclo" ? "novo" : allocReason === "manutencao" ? `manutenção ${minutes ?? MAINTENANCE_MINUTES}min` : "reforço"}
+                </span>
+              </div>
               <span style={{ fontSize: "13px", fontWeight: 600, color: topic.mastery < 40 ? "var(--error)" : topic.mastery < 65 ? "var(--warning)" : "var(--success)" }}>{Math.round(topic.mastery)}%</span>
             </div>
           ))}

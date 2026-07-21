@@ -5,6 +5,7 @@ import FlashcardsView from "./components/views/flashcards-view";
 import RedacaoView from "./components/views/redacao-view";
 import PerfilView from "./components/views/perfil-view";
 import PainelView from "./components/views/painel-view";
+import DesempenhoView from "./components/views/desempenho-view";
 import { countDueFlashcards } from "./lib/db";
 
 export default function App() {
@@ -39,20 +40,9 @@ export default function App() {
         {view === "nucleo" && <NucleoView />}
         {view === "flashcards" && <FlashcardsView onReviewComplete={refreshCount} />}
         {view === "redacao" && <RedacaoView onMasteryUpdate={refreshCount} />}
-        {view === "desempenho" && <PlaceholderView title="Desempenho" />}
+        {view === "desempenho" && <DesempenhoView />}
         {view === "perfil" && <PerfilView />}
       </main>
-    </div>
-  );
-}
-
-function PlaceholderView({ title }: { title: string }) {
-  return (
-    <div style={{ maxWidth: "800px", margin: "0 auto", padding: "32px 20px" }}>
-      <h1 style={{ fontSize: "28px", fontWeight: 700, marginBottom: "8px" }}>{title}</h1>
-      <p style={{ color: "var(--text-muted)", fontSize: "15px" }}>
-        Esta seção será implementada em um bloco futuro.
-      </p>
     </div>
   );
 }

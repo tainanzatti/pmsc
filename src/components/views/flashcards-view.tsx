@@ -1,18 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  ensureFlashcardsForTopic, getFlashcardQueueTopics, loadDueFlashcards,
-  reviewFlashcard, type FlashcardRow, type TopicRow,
-} from "../../lib/db";
+import { ensureFlashcardsForTopic, getFlashcardQueueTopics, loadDueFlashcards, reviewFlashcard, type FlashcardRow, type TopicRow } from "../../lib/db";
 import { DISCIPLINES, type DisciplineId } from "../../lib/curriculum";
 
-interface QueueItem { topic: TopicRow; mastery: number }
-
-interface FlashcardsViewProps {
-  onReviewComplete?: () => void;
-}
+interface FlashcardsViewProps { onReviewComplete?: () => void }
 
 export default function FlashcardsView({ onReviewComplete }: FlashcardsViewProps) {
-  const [queue, setQueue] = useState<QueueItem[]>([]);
+  const [queue, setQueue] = useState<{ topic: TopicRow; mastery: number }[]>([]);
   const [dueCards, setDueCards] = useState<FlashcardRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +25,6 @@ export default function FlashcardsView({ onReviewComplete }: FlashcardsViewProps
   }, []);
 
   useEffect(() => { void loadData(); }, [loadData]);
-
   const currentCard = useMemo(() => (dueCards.length > 0 ? dueCards[currentCardIndex] : null), [dueCards, currentCardIndex]);
 
   const handleReview = useCallback(async (remembered: boolean) => {
@@ -68,18 +60,12 @@ export default function FlashcardsView({ onReviewComplete }: FlashcardsViewProps
         <FlashcardReview card={currentCard} revealed={revealed} onReveal={() => setRevealed(true)} onReview={handleReview} reviewing={reviewing} cardNumber={currentCardIndex + 1} totalCards={dueCards.length} />
       ) : (
         <div style={{ background: "var(--surface)", borderRadius: "var(--radius)", padding: "40px", textAlign: "center", marginBottom: "32px", border: "1px solid var(--border)" }}>
-          {reviewedCount > 0 ? (
-            <><p style={{ fontSize: "18px", fontWeight: 600, marginBottom: "8px" }}>Sessão concluída!</p><p style={{ color: "var(--text-muted)", fontSize: "14px" }}>Você revisou {reviewedCount} {reviewedCount === 1 ? "cartão" : "cartões"}.</p></>
-          ) : (
-            <><p style={{ fontSize: "18px", fontWeight: 600, marginBottom: "8px" }}>Nenhum cartão pendente para hoje</p><p style={{ color: "var(--text-muted)", fontSize: "14px" }}>Gere flashcards para os tópicos abaixo para começar a revisar.</p></>
-          )}
+          {reviewedCount > 0 ? (<><p style={{ fontSize: "18px", fontWeight: 600, marginBottom: "8px" }}>Sessão concluída!</p><p style={{ color: "var(--text-muted)", fontSize: "14px" }}>Você revisou {reviewedCount} {reviewedCount === 1 ? "cartão" : "cartões"}.</p></>) : (<><p style={{ fontSize: "18px", fontWeight: 600, marginBottom: "8px" }}>Nenhum cartão pendente para hoje</p><p style={{ color: "var(--text-muted)", fontSize: "14px" }}>Gere flashcards para os tópicos abaixo para começar a revisar.</p></>)}
         </div>
       )}
       <section>
         <h2 style={{ fontSize: "16px", fontWeight: 600, marginBottom: "16px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Fila de Reforço ({queue.length} tópicos)</h2>
-        {queue.length === 0 ? (
-          <p style={{ color: "var(--text-muted)", fontSize: "14px" }}>Nenhum tópico abaixo de 60% no momento. Bom trabalho!</p>
-        ) : (
+        {queue.length === 0 ? (<p style={{ color: "var(--text-muted)", fontSize: "14px" }}>Nenhum tópico abaixo de 60% no momento. Bom trabalho!</p>) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             {queue.map(({ topic, mastery }) => {
               const disciplineLabel = DISCIPLINES[topic.discipline_id as DisciplineId]?.label ?? topic.discipline_id;
@@ -97,9 +83,7 @@ export default function FlashcardsView({ onReviewComplete }: FlashcardsViewProps
   );
 }
 
-function FlashcardReview({ card, revealed, onReveal, onReview, reviewing, cardNumber, totalCards }: {
-  card: FlashcardRow; revealed: boolean; onReveal: () => void; onReview: (remembered: boolean) => void; reviewing: boolean; cardNumber: number; totalCards: number;
-}) {
+function FlashcardReview({ card, revealed, onReveal, onReview, reviewing, cardNumber, totalCards }: { card: FlashcardRow; revealed: boolean; onReveal: () => void; onReview: (remembered: boolean) => void; reviewing: boolean; cardNumber: number; totalCards: number }) {
   const disciplineLabel = DISCIPLINES[card.disciplina_id as DisciplineId]?.label ?? card.disciplina_id;
   return (
     <div style={{ background: "var(--surface)", border: "2px solid var(--primary)", borderRadius: "var(--radius)", padding: "32px", marginBottom: "32px", minHeight: "320px", display: "flex", flexDirection: "column" }}>

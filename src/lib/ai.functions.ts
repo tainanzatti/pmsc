@@ -43,10 +43,6 @@ export async function generateQuestoes(topicTitle: string, disciplineId: string)
   ];
 }
 
-// ---------------------------------------------------------------------------
-// Redação — tema e correção
-// ---------------------------------------------------------------------------
-
 const ESSAY_THEMES = [
   "Os desafios da segurança pública em Santa Catarina: o papel do soldado da PMSC na construção de uma sociedade mais segura",
   "O uso de tecnologia na prevenção de crimes: como a modernização da Polícia Militar pode contribuir para a segurança cidadã",
@@ -82,51 +78,21 @@ export async function correctEssay(_tema: string, texto: string): Promise<EssayF
   const hasIntro = texto.length > 100;
   const hasConclusion = texto.toLowerCase().includes("portanto") || texto.toLowerCase().includes("conclui") || texto.toLowerCase().includes("assim") || texto.toLowerCase().includes("dessa forma");
   const hasProposal = texto.toLowerCase().includes("prop") || texto.toLowerCase().includes("solu") || texto.toLowerCase().includes("medida") || texto.toLowerCase().includes("necess");
-
   const baseCompreensao = wordCount > 50 ? 7 : 4;
   const baseArgumentacao = wordCount > 100 ? 6 : 3;
   const baseEstrutura = hasIntro && hasConclusion ? 7 : 4;
   const baseNorma = wordCount > 50 ? 6 : 4;
   const baseConclusao = hasConclusion && hasProposal ? 7 : hasConclusion ? 5 : 3;
-
   const nota = (baseCompreensao + baseArgumentacao + baseEstrutura + baseNorma + baseConclusao) / 5;
-
   return {
     nota: Math.round(nota * 10) / 10,
     criterios: {
-      compreensao_tema: {
-        nota: baseCompreensao,
-        comentario: wordCount > 50
-          ? "O texto demonstra compreensão do tema proposto, abordando os pontos centrais."
-          : "O texto precisa desenvolver melhor a compreensão do tema. Amplie a discussão.",
-      },
-      argumentacao: {
-        nota: baseArgumentacao,
-        comentario: wordCount > 100
-          ? "Apresenta argumentos consistentes para sustentar a tese."
-          : "A argumentação precisa ser mais desenvolvida com exemplos e fundamentação.",
-      },
-      estrutura_coesao: {
-        nota: baseEstrutura,
-        comentario: hasIntro && hasConclusion
-          ? "O texto possui estrutura adequada com introdução, desenvolvimento e conclusão."
-          : "Falta clareza na estrutura. Organize em introdução, desenvolvimento e conclusão.",
-      },
-      norma_culta: {
-        nota: baseNorma,
-        comentario: wordCount > 50
-          ? "O texto apresenta domínio razoável da norma culta, com poucos desvios."
-          : "Atenção à norma culta. Revise concordância, ortografia e pontuação.",
-      },
-      conclusao_proposta: {
-        nota: baseConclusao,
-        comentario: hasProposal
-          ? "A conclusão apresenta proposta de intervenção, atendendo ao formato dissertativo-argumentativo."
-          : "A conclusão precisa apresentar uma proposta de intervenção clara e viável.",
-      },
+      compreensao_tema: { nota: baseCompreensao, comentario: wordCount > 50 ? "O texto demonstra compreensão do tema proposto, abordando os pontos centrais." : "O texto precisa desenvolver melhor a compreensão do tema. Amplie a discussão." },
+      argumentacao: { nota: baseArgumentacao, comentario: wordCount > 100 ? "Apresenta argumentos consistentes para sustentar a tese." : "A argumentação precisa ser mais desenvolvida com exemplos e fundamentação." },
+      estrutura_coesao: { nota: baseEstrutura, comentario: hasIntro && hasConclusion ? "O texto possui estrutura adequada com introdução, desenvolvimento e conclusão." : "Falta clareza na estrutura. Organize em introdução, desenvolvimento e conclusão." },
+      norma_culta: { nota: baseNorma, comentario: wordCount > 50 ? "O texto apresenta domínio razoável da norma culta, com poucos desvios." : "Atenção à norma culta. Revise concordância, ortografia e pontuação." },
+      conclusao_proposta: { nota: baseConclusao, comentario: hasProposal ? "A conclusão apresenta proposta de intervenção, atendendo ao formato dissertativo-argumentativo." : "A conclusão precisa apresentar uma proposta de intervenção clara e viável." },
     },
-    comentario_geral: wordCount > 150
-      ? "Sua redação demonstra esforço na construção do texto dissertativo-argumentativo. Continue praticando para refinar a argumentação e a proposta de intervenção."
-      : "Sua redação precisa de mais desenvolvimento. Procure escrever no mínimo 15-30 linhas, com argumentos bem fundamentados e uma proposta de intervenção clara.",
+    comentario_geral: wordCount > 150 ? "Sua redação demonstra esforço na construção do texto dissertativo-argumentativo. Continue praticando para refinar a argumentação e a proposta de intervenção." : "Sua redação precisa de mais desenvolvimento. Procure escrever no mínimo 15-30 linhas, com argumentos bem fundamentados e uma proposta de intervenção clara.",
   };
 }
