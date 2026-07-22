@@ -10,6 +10,7 @@ export function PerfilView() {
   const [apelido, setApelido] = useState(profile?.apelido || "");
   const [telefone, setTelefone] = useState(profile?.telefone ? formatPhone(profile.telefone) : "");
   const [birthDate, setBirthDate] = useState(profile?.birth_date || "");
+  const [examDate, setExamDate] = useState(profile?.exam_date || "");
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
@@ -72,6 +73,11 @@ export function PerfilView() {
         updates.birth_date = birthDate;
       } else {
         updates.birth_date = null;
+      }
+      if (examDate) {
+        updates.exam_date = examDate;
+      } else {
+        updates.exam_date = null;
       }
 
       const { error } = await updateProfile(updates);
@@ -233,6 +239,11 @@ export function PerfilView() {
           <div>
             <label style={labelStyle}>Data de nascimento</label>
             <input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} max={new Date().toISOString().split("T")[0]} style={inputStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>Data da prova (opcional)</label>
+            <input type="date" value={examDate} onChange={(e) => setExamDate(e.target.value)} min={new Date().toISOString().split("T")[0]} style={inputStyle} />
+            <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>Usado para priorizar seus estudos conforme a proximidade da prova.</p>
           </div>
         </div>
 

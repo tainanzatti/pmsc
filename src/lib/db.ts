@@ -17,6 +17,7 @@ export interface Profile {
   longest_streak: number;
   last_study_date: string | null;
   sidebar_collapsed: boolean;
+  exam_date: string | null;
 }
 
 export interface Topic {
@@ -593,4 +594,86 @@ export async function updateSidebarCollapsed(userId: string, collapsed: boolean)
 export async function resetUserProgress(): Promise<void> {
   const { error } = await supabase.rpc("reset_user_progress");
   if (error) throw error;
+}
+
+export interface TopicProgressRow {
+  id: string;
+  user_id: string;
+  topic_id: string;
+  discipline_id: string;
+  status: "pending" | "in_progress" | "completed";
+  mastery: number;
+  questions_total: number;
+  questions_correct: number;
+  last_studied_at: string | null;
+  study_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function loadTopicProgress(userId: string): Promise<Record<string, TopicProgressRow>> {
+  const { data, error } = await supabase
+    .from("topic_progress")
+    .select("*")
+    .eq("user_id", userId);
+  if (error) throw error;
+  const result: Record<string, TopicProgressRow> = {};
+  for (const row of (data || []) as TopicProgressRow[]) {
+    result[row.topic_id] = row;
+  }
+  return result;
+}
+
+export async function upsertTopicProgress(
+  userId: string,
+  topicId: string,
+  disciplineId: string,
+  updates: Partial<TopicProgressRow>
+): Promise<void> {
+  const { error } = await supabase
+    .from("topic_progress")
+    .upsert(
+      {
+        user_id: userId,
+        topic_id: topicId,
+        discipline_id: disciplineId,
+        ...updates,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id,topic_id" }
+    );
+  if (error) throw error;
+}
+
+export async function updateTopicProgressFromLancamento(
+  userId: string,
+  topicId: string | null,
+  disciplineId: string,
+  totalQuestions: number,
+  correctCount: number
+): Promise<void> {
+  if (!topicId) return;
+  const { data: existing, error: loadError } = await supabase
+    .from("topic_progress")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("topic_id", topicId)
+    .maybeSingle();
+  if (loadError) throw loadError;
+
+  const prev = existing as TopicProgressRow | null;
+  const newTotal = (prev?.questions_total || 0) + totalQuestions;
+  const newCorrect = (prev?.questions_correct || 0) + correctCount;
+  const newMastery = newTotal > 0 ? Math.min(100, Math.round((newCorrect / newTotal) * 100)) : 0;
+  const newStatus = newMastery >= 80 ? "completed" : "in_progress";
+  const newStudyCount = (prev?.study_count || 0) + 1;
+
+  await upsertTopicProgress(userId, topicId, disciplineId, {
+    status: newStatus,
+    mastery: newMastery,
+    questions_total: newTotal,
+    questions_correct: newCorrect,
+    last_studied_at: new Date().toISOString(),
+    study_count: newStudyCount,
+  });
 }

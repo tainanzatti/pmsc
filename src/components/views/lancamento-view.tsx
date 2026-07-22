@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../../lib/auth";
-import { saveLancamento, updateProfileXP, type LancamentoInput } from "../../lib/db";
+import { saveLancamento, updateProfileXP, updateTopicProgressFromLancamento, type LancamentoInput } from "../../lib/db";
 import { loadDisciplines, loadTopicsByDiscipline, type Discipline, type Topic } from "../../lib/curriculum";
 import { calculateLancamentoXP } from "../../lib/xp";
 
@@ -89,6 +89,7 @@ export function LancamentoView({ onNavigate }: { onNavigate?: (v: string) => voi
         xp_earned: xpToEarn,
       };
       await saveLancamento(user.id, input);
+      await updateTopicProgressFromLancamento(user.id, topicId, disciplineId, totalQuestions, correctCount);
       await updateProfileXP(user.id, xpToEarn, studyDate);
       await refreshProfile();
 

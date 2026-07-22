@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { loadLancamentos, updateLancamento, deleteLancamento, recalculateProfileXP, type Lancamento } from "../../lib/db";
+import { loadLancamentos, updateLancamento, deleteLancamento, recalculateProfileXP, upsertTopicProgress, type Lancamento } from "../../lib/db";
 import { loadDisciplines, loadAllTopics, type Discipline, type Topic } from "../../lib/curriculum";
 import { useAuth } from "../../lib/auth";
 
@@ -104,6 +104,21 @@ export function HistoricoView() {
         study_date: editDate,
         notes: editNotes.trim() || null,
       });
+      // Update topic progress for the edited lancamento
+      const editedLanc = lancamentos.find((l) => l.id === editingId);
+      if (editedLanc?.topic_id) {
+        const allLancsForTopic = lancamentos.filter((l) => l.topic_id === editedLanc.topic_id && l.id !== editingId);
+        const newTotal = allLancsForTopic.reduce((s, l) => s + l.total_questions, 0) + editTotal;
+        const newCorrect = allLancsForTopic.reduce((s, l) => s + l.correct_count, 0) + editCorrect;
+        const newMastery = newTotal > 0 ? Math.min(100, Math.round((newCorrect / newTotal) * 100)) : 0;
+        const newStatus = newMastery >= 80 ? "completed" : "in_progress";
+        await upsertTopicProgress(user.id, editedLanc.topic_id, editedLanc.discipline_id, {
+          status: newStatus,
+          mastery: newMastery,
+          questions_total: newTotal,
+          questions_correct: newCorrect,
+        });
+      }
       await recalculateProfileXP(user.id);
       await refreshProfile();
 
