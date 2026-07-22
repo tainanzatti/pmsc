@@ -1,60 +1,162 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState, useEffect } from "react";
+import { useAuth } from "../lib/auth";
+import { updateSidebarCollapsed } from "../lib/db";
 
-export type ViewId = "painel" | "nucleo" | "flashcards" | "desempenho" | "redacao" | "perfil";
-
-interface NavItem { id: ViewId; label: string; icon: string }
-
-const NAV_ITEMS: NavItem[] = [
-  { id: "painel", label: "Painel", icon: "📊" },
-  { id: "nucleo", label: "Núcleo", icon: "🎯" },
-  { id: "flashcards", label: "Flashcards", icon: "🃏" },
-  { id: "desempenho", label: "Desempenho", icon: "📈" },
-  { id: "redacao", label: "Redação", icon: "✍️" },
-  { id: "perfil", label: "Perfil", icon: "👤" },
-];
+export type ViewId = "painel" | "nucleo" | "flashcards" | "lancamento" | "historico" | "desempenho" | "ranking" | "redacao" | "perfil";
 
 interface SidebarProps {
   current: ViewId;
   onNavigate: (view: ViewId) => void;
   flashcardCount: number;
+  onSignOut: () => void;
 }
 
-const STORAGE_KEY = "pmsc-sidebar-expanded";
+const NAV_ITEMS: { id: ViewId; label: string; icon: string }[] = [
+  { id: "painel", label: "Painel", icon: "📊" },
+  { id: "nucleo", label: "Núcleo de Estudo", icon: "📚" },
+  { id: "flashcards", label: "Flashcards", icon: "🃏" },
+  { id: "lancamento", label: "Lançar Questões", icon: "📝" },
+  { id: "historico", label: "Histórico", icon: "📋" },
+  { id: "desempenho", label: "Desempenho", icon: "📈" },
+  { id: "ranking", label: "Ranking", icon: "🏆" },
+  { id: "redacao", label: "Redação", icon: "✍️" },
+  { id: "perfil", label: "Perfil", icon: "👤" },
+];
 
-export default function Sidebar({ current, onNavigate, flashcardCount }: SidebarProps) {
-  const [expanded, setExpanded] = useState(true);
+export function Sidebar({ current, onNavigate, flashcardCount, onSignOut }: SidebarProps) {
+  const { profile, refreshProfile } = useAuth();
+  const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored !== null) setExpanded(stored === "true");
-  }, []);
+    setCollapsed(profile?.sidebar_collapsed ?? false);
+  }, [profile?.sidebar_collapsed]);
 
-  const toggleExpanded = useCallback(() => {
-    setExpanded((prev) => { const next = !prev; localStorage.setItem(STORAGE_KEY, String(next)); return next; });
-  }, []);
-
-  const sidebarWidth = expanded ? "var(--sidebar-w)" : "var(--sidebar-collapsed-w)";
+  async function toggleSidebar() {
+    const next = !collapsed;
+    setCollapsed(next);
+    if (profile) {
+      try {
+        await updateSidebarCollapsed(profile.id, next);
+        await refreshProfile();
+      } catch (err) {
+        console.error("Failed to save sidebar state:", err);
+      }
+    }
+  }
 
   return (
-    <aside style={{ width: sidebarWidth, minWidth: sidebarWidth, background: "var(--surface)", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column", transition: "width 0.2s ease, min-width 0.2s ease", height: "100vh", position: "sticky", top: 0 }}>
-      <button onClick={toggleExpanded} style={{ background: "transparent", color: "var(--text-muted)", padding: expanded ? "16px 20px" : "16px 0", textAlign: expanded ? "left" : "center", fontSize: "18px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: expanded ? "space-between" : "center", gap: "12px" }} title={expanded ? "Recolher" : "Expandir"}>
-        <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--text)" }}>{expanded ? "Operação PMSC" : "PMSC"}</span>
-        <span style={{ fontSize: "16px" }}>{expanded ? "◀" : "▶"}</span>
-      </button>
-      <nav style={{ flex: 1, padding: "12px 8px", display: "flex", flexDirection: "column", gap: "4px" }}>
-        {NAV_ITEMS.map((item) => {
-          const isActive = current === item.id;
-          const showBadge = item.id === "flashcards" && flashcardCount > 0;
-          return (
-            <button key={item.id} onClick={() => onNavigate(item.id)} title={expanded ? undefined : item.label} style={{ background: isActive ? "var(--surface-hover)" : "transparent", color: isActive ? "var(--primary)" : "var(--text-muted)", padding: expanded ? "12px 16px" : "12px 0", textAlign: "left", display: "flex", alignItems: "center", gap: "12px", justifyContent: expanded ? "flex-start" : "center", borderRadius: "var(--radius-sm)", border: "none", fontSize: "14px", fontWeight: isActive ? 600 : 500, position: "relative" }}>
-              <span style={{ fontSize: "18px", flexShrink: 0 }}>{item.icon}</span>
-              {expanded && <span>{item.label}</span>}
-              {showBadge && <span style={{ background: "var(--error)", color: "white", fontSize: "11px", fontWeight: 700, borderRadius: "10px", padding: "2px 7px", minWidth: "20px", textAlign: "center", marginLeft: expanded ? "auto" : "0", position: expanded ? "static" : "absolute", top: expanded ? "auto" : "4px", right: expanded ? "auto" : "4px" }}>{flashcardCount > 99 ? "99+" : flashcardCount}</span>}
-            </button>
-          );
-        })}
+    <aside
+      style={{
+        width: collapsed ? "64px" : "240px",
+        minHeight: "100vh",
+        background: "var(--surface)",
+        borderRight: "1px solid var(--border)",
+        display: "flex",
+        flexDirection: "column",
+        padding: collapsed ? "16px 8px" : "16px",
+        flexShrink: 0,
+        transition: "width 0.25s ease, padding 0.25s ease",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "24px", padding: collapsed ? "4px 0" : "8px 12px" }}>
+        <button
+          onClick={toggleSidebar}
+          title={collapsed ? "Expandir" : "Recolher"}
+          style={{
+            background: "transparent",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-sm)",
+            padding: "6px 8px",
+            fontSize: "16px",
+            flexShrink: 0,
+            color: "var(--text-muted)",
+          }}
+        >
+          {collapsed ? "▶" : "◀"}
+        </button>
+        {!collapsed && (
+          <div>
+            <h2 style={{ fontSize: "16px", fontWeight: 700 }}>Operação PMSC</h2>
+            <p style={{ fontSize: "12px", color: "var(--text-muted)" }}>Soldado 2026</p>
+          </div>
+        )}
+      </div>
+
+      <nav style={{ display: "flex", flexDirection: "column", gap: "4px", flex: 1 }}>
+        {NAV_ITEMS.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => onNavigate(item.id)}
+            title={collapsed ? item.label : undefined}
+            style={{
+              background: current === item.id ? "var(--primary-dim)" : "transparent",
+              color: current === item.id ? "var(--primary)" : "var(--text)",
+              border: "none",
+              textAlign: "left",
+              padding: collapsed ? "10px 8px" : "10px 12px",
+              borderRadius: "var(--radius-sm)",
+              fontSize: "14px",
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              justifyContent: collapsed ? "center" : "flex-start",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+            }}
+          >
+            <span style={{ flexShrink: 0 }}>{item.icon}</span>
+            {!collapsed && <span>{item.label}</span>}
+            {item.id === "flashcards" && flashcardCount > 0 && !collapsed && (
+              <span
+                style={{
+                  background: "var(--primary)",
+                  color: "#fff",
+                  borderRadius: "10px",
+                  padding: "2px 8px",
+                  fontSize: "11px",
+                  fontWeight: 600,
+                  marginLeft: "auto",
+                }}
+              >
+                {flashcardCount}
+              </span>
+            )}
+            {item.id === "flashcards" && flashcardCount > 0 && collapsed && (
+              <span
+                style={{
+                  background: "var(--primary)",
+                  color: "#fff",
+                  borderRadius: "10px",
+                  padding: "1px 5px",
+                  fontSize: "9px",
+                  fontWeight: 600,
+                  position: "absolute",
+                  marginLeft: "20px",
+                  marginTop: "-12px",
+                }}
+              >
+                {flashcardCount}
+              </span>
+            )}
+          </button>
+        ))}
       </nav>
-      <div style={{ padding: expanded ? "12px 20px" : "12px 0", textAlign: "center", borderTop: "1px solid var(--border)", fontSize: "11px", color: "var(--text-muted)" }}>{expanded ? "Soldado PMSC 2026" : "2026"}</div>
+
+      <button
+        onClick={onSignOut}
+        title={collapsed ? "Sair" : undefined}
+        style={{
+          background: "transparent",
+          border: "1px solid var(--border)",
+          color: "var(--text-muted)",
+          padding: collapsed ? "10px 8px" : "10px 12px",
+          fontSize: "13px",
+          marginTop: "16px",
+          textAlign: "center",
+        }}
+      >
+        {collapsed ? "⏻" : "Sair"}
+      </button>
     </aside>
   );
 }
